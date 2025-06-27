@@ -93,7 +93,6 @@ userRouters.post('/update-production', async (req, res) => {
         );
     }
 
-    // Insert report entry
     const dataToInsert = await classUserServices.insertToTheDatabase(checkData, 'production_report');
 
     if (dataToInsert) {
@@ -141,6 +140,17 @@ userRouters.post('/add_new_dyeing_order', async (req, res) => {
     if (!insertOrder) return res.send({ error: 'Failed to insert data.' })
     res.send({ success: 'Order Inserted' })
 
+})
+
+userRouters.get('/get_pi_info/:pi_no', async (req, res) => {
+    if (!req.params.pi_no || isNaN(Number(req.params.pi_no))) {
+        return res.status(400).send({ error: 'Invalid PI number provided.' });
+    }
+    const findData = await classUserServices.findDataIfExist('dyeing_orders', 
+        { pi_no: Number(req.params.pi_no) }
+    )
+    if(!findData) return res.send({ findData: null, error: 'No data found for this PI number.' });
+    res.send(findData);
 })
 
 
