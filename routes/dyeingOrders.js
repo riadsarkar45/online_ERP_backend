@@ -30,6 +30,7 @@ userRouters.get('/dyeing-orders', async (req, res) => {
 
 userRouters.post('/update-production', async (req, res) => {
     const checkData = req.body;
+    console.log(checkData, 'line 33');
     if (!checkData || Object.keys(checkData).length === 0) {
         return res.status(400).send({ error: "No data provided" });
     }
@@ -71,6 +72,19 @@ userRouters.post('/update-production', async (req, res) => {
     const checkDyeingOrder = await classUserServices.findDataIfExist('dyeing_orders', {
         dyeing_order: checkData.dyeing_order
     });
+    const isMatchFoundWithPi = await classUserServices.findDataIfExist('pi_wise_report', {
+        pi_no: Number(checkData.pi_no),
+        yarn_type: checkData.yarn_type,
+    });
+
+    if (isMatchFoundWithPi) {
+        await classUserServices.updateData(
+            { pi_no: checkData.pi_no, yarn_type: checkData.yarn_type },
+            { $inc: { [currentStatus.dyeingField]: qty } },
+            'pi_wise_report'
+        );
+
+    }
 
     const checkSummary = await classUserServices.findDataIfExist('summary', {
         marketing_name: checkData.marketing_name,
@@ -80,17 +94,19 @@ userRouters.post('/update-production', async (req, res) => {
     if (checkDyeingOrder) {
         await classUserServices.updateData(
             { dyeing_order: checkData.dyeing_order },
-            { [currentStatus.dyeingField]: qty },
+            { $inc: { [currentStatus.dyeingField]: qty } },
             'dyeing_orders'
         );
+
     }
 
     if (checkSummary) {
         await classUserServices.updateData(
             { marketing_name: checkData.marketing_name, currentMonth: currentM },
-            { [currentStatus.summaryField]: qty },
+            { $inc: { [currentStatus.summaryField]: qty } },
             'summary'
         );
+
     }
 
     const dataToInsert = await classUserServices.insertToTheDatabase(checkData, 'production_report');
@@ -111,18 +127,51 @@ userRouters.post('/add_new_dyeing_order', async (req, res) => {
     });
     if (exists) return res.send({ error: 'Dyeing order already inserted' })
     const insertOrder = await classUserServices.insertToTheDatabase(req.body, 'dyeing_orders')
+    const { marketing_name, month_name, sectionName, dyeing_order_qty, currentMonth, total_sample_adjust_qty, total_store_delivery } = req.body || {};
+
+
+    const isPiSummaryFound = await classUserServices.findDataIfExist('pi_wise_report',
+        { pi_no: Number(req.body.pi_no), yarn_type: req.body.yarn_type, }
+    );
+    if (isPiSummaryFound) {
+        await classUserServices.updateData(
+            { pi_no: Number(req.body.pi_no) },
+            { $inc: { dyeing_order_qty: Number(req.body.dyeing_order_qty) } },
+            'pi_wise_report'
+        );
+
+
+    } else {
+        await classUserServices.insertToTheDatabase(
+            {
+                sectionName,
+                marketing_name,
+                month_name,
+                yarn_type: req.body.yarn_type,
+                pi_no: Number(req.body.pi_no),
+                unit_price: Number(req.body.unit_price),
+                dyeing_order_qty: Number(dyeing_order_qty),
+                total_sample_adjust_qty: Number(total_sample_adjust_qty),
+                total_store_delivery: Number(total_store_delivery),
+
+            }, 'pi_wise_report')
+    }
+
 
     const dyeingOrderFound = await classUserServices.findDataIfExist('summary', {
         marketing_name: req.body.marketing_name,
         currentMonth: currentM,
     });
-    const { marketing_name, month_name, sectionName,  dyeing_order_qty, currentMonth, total_sample_adjust_qty, total_store_delivery } = req.body || {};
     if (dyeingOrderFound) {
         await classUserServices.updateData(
-            { marketing_name: marketing_name },
-            { total_dyeing_qty: Number(req.body.dyeing_order_qty) },
+            {
+                marketing_name: marketing_name,
+                currentMonth: currentM,
+            },
+            { $inc: { total_dyeing_qty: Number(req.body.dyeing_order_qty) } },
             'summary'
-        )
+        );
+
     } else {
         await classUserServices.insertToTheDatabase(
             {
