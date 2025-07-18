@@ -13,7 +13,7 @@ const verifyToken = (req, res, next) => {
     const token = req.headers.authorization.split(' ')[1];
     console.log('Extracted Token:', token);
 
-    jwt.verify(token, ACCESS_TOKEN, (err, decoded) => {
+    jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
         if (err) {
             console.error('JWT Verification Error:', err.message);
             return res.status(401).send({ message: 'unauthorized access' });
